@@ -22,6 +22,8 @@ from keras_nlp.layers.transformer_layer_utils import (  # isort:skip
     merge_padding_and_attention_mask,
 )
 
+import json
+output_lst = []
 
 @keras.utils.register_keras_serializable(package="keras_nlp")
 class TransformerEncoder(keras.layers.Layer):
@@ -196,6 +198,7 @@ class TransformerEncoder(keras.layers.Layer):
             value=x,
             attention_mask=self_attention_mask,
         )
+        tf.print(x)
         x = self._self_attention_dropout(x)
         x = x + residual
         if not self.normalize_first:
