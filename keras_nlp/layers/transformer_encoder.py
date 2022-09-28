@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Transformer encoder block implementation based on `keras.layers.Layer`."""
-
+import tensorflow as tf
 from tensorflow import keras
 
 from keras_nlp.utils.keras_utils import clone_initializer
