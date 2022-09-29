@@ -22,6 +22,10 @@ from keras_nlp.layers.transformer_layer_utils import (  # isort:skip
     merge_padding_and_attention_mask,
 )
 
+import sys
+sys.path.append("/content/my_keras/keras/layers/attention/")
+from multi_head_attention import MultiHeadAttention
+
 import json
 output_lst = []
 
@@ -124,7 +128,7 @@ class TransformerEncoder(keras.layers.Layer):
         key_dim = int(hidden_dim // self.num_heads)
 
         # Self attention layers.
-        self._self_attention_layer = keras.layers.MultiHeadAttention(
+        self._self_attention_layer = MultiHeadAttention(
             num_heads=self.num_heads,
             key_dim=key_dim,
             dropout=self.dropout,
