@@ -203,6 +203,7 @@ class TransformerEncoder(keras.layers.Layer):
         x = x + residual
         if not self.normalize_first:
             x = self._self_attention_layernorm(x)
+            tf.print(x)
 
         # Feedforward block.
         residual = x
