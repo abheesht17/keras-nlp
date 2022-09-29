@@ -26,6 +26,9 @@ import sys
 sys.path.append("/content/my_keras/keras/layers/attention/")
 from multi_head_attention import MultiHeadAttention
 
+tf.print("TEEEEEEEEEEEEEEEEEE")
+MultiHeadAttention(6,768)
+
 import json
 output_lst = []
 
