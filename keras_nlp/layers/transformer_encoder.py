@@ -198,12 +198,12 @@ class TransformerEncoder(keras.layers.Layer):
             value=x,
             attention_mask=self_attention_mask,
         )
-        # tf.print(x)
+        tf.print(x, tf.shape(x))
         x = self._self_attention_dropout(x)
         x = x + residual
         if not self.normalize_first:
             x = self._self_attention_layernorm(x)
-            tf.print(x)
+            # tf.print(x, tf.shape(x))
 
         # Feedforward block.
         residual = x
