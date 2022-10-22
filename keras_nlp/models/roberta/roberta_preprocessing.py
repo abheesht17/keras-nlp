@@ -58,6 +58,43 @@ class RobertaPreprocessor(keras.layers.Layer):
                     "waterfall" algorithm that allocates quota in a
                     left-to-right manner and fills up the buckets until we run
                     out of budget. It supports an arbitrary number of segments.
+
+    Examples:
+    ```python
+    preprocessor = keras_nlp.models.BertPreprocessor(
+        vocabulary="vocab.json",
+        merges="merges.txt",
+    )
+
+    # Tokenize and pack a single sentence directly.
+    preprocessor("The quick brown fox jumped.")
+
+    # Tokenize and pack a multiple sentence directly.
+    preprocessor(("The quick brown fox jumped.", "Call me Ishmael."))
+
+    # Map a dataset to preprocess a single sentence.
+    features = ["The quick brown fox jumped.", "I forgot my homework."]
+    labels = [0, 1]
+    ds = tf.data.Dataset.from_tensor_slices((features, labels))
+    ds = ds.map(
+        lambda x, y: (preprocessor(x), y),
+        num_parallel_calls=tf.data.AUTOTUNE,
+    )
+
+    # Map a dataset to preprocess a multiple sentences.
+    first_sentences = ["The quick brown fox jumped.", "Call me Ishmael."]
+    second_sentences = ["The fox tripped.", "Oh look, a whale."]
+    labels = [1, 1]
+    ds = tf.data.Dataset.from_tensor_slices(
+        (
+            (first_sentences, second_sentences), labels
+        )
+    )
+    ds = ds.map(
+        lambda x, y: (preprocessor(x), y),
+        num_parallel_calls=tf.data.AUTOTUNE,
+    )
+    ```
     """
 
     def __init__(
