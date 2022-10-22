@@ -19,8 +19,8 @@ import tensorflow as tf
 from absl.testing import parameterized
 from tensorflow import keras
 
-from keras_nlp.models.roberta.roberta_models import XLMRoberta
-from keras_nlp.models.roberta.roberta_tasks import XLMRobertaClassifier
+from keras_nlp.models.xlm_roberta.xlm_roberta_models import XLMRoberta
+from keras_nlp.models.xlm_roberta.xlm_roberta_tasks import XLMRobertaClassifier
 
 
 class XLMRobertaClassifierTest(tf.test.TestCase, parameterized.TestCase):
@@ -54,7 +54,7 @@ class XLMRobertaClassifierTest(tf.test.TestCase, parameterized.TestCase):
     @parameterized.named_parameters(
         ("jit_compile_false", False), ("jit_compile_true", True)
     )
-    def test_roberta_classifier_compile(self, jit_compile):
+    def test_xlm_roberta_classifier_compile(self, jit_compile):
         model = XLMRobertaClassifier(self.model, 4, 128, name="classifier")
         model.compile(jit_compile=jit_compile)
         model.predict(self.input_batch)
@@ -62,7 +62,7 @@ class XLMRobertaClassifierTest(tf.test.TestCase, parameterized.TestCase):
     @parameterized.named_parameters(
         ("jit_compile_false", False), ("jit_compile_true", True)
     )
-    def test_roberta_classifier_compile_batched_ds(self, jit_compile):
+    def test_xlm_roberta_classifier_compile_batched_ds(self, jit_compile):
         model = XLMRobertaClassifier(self.model, 4, 128, name="classifier")
         model.compile(jit_compile=jit_compile)
         model.predict(self.input_dataset)
