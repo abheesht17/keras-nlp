@@ -87,10 +87,10 @@ class RobertaPreprocessor(keras.layers.Layer):
                     "`vocabulary` or use a pretrained `vocabulary` name."
                 )
 
-        self.pad_token_id = self.tokenizer.convert_token_to_id(pad_token)
+        self.pad_token_id = self.tokenizer.token_to_id(pad_token)
         self.packer = RobertaMultiSegmentPacker(
-            start_value=self.tokenizer.convert_token_to_id(start_token),
-            end_value=self.tokenizer.convert_token_to_id(end_token),
+            start_value=self.tokenizer.token_to_id(start_token),
+            end_value=self.tokenizer.token_to_id(end_token),
             pad_value=self.pad_token_id,
             truncate=truncate,
             sequence_length=sequence_length,
