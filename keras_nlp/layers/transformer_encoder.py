@@ -22,6 +22,8 @@ from keras_nlp.layers.transformer_layer_utils import (  # isort:skip
     merge_padding_and_attention_mask,
 )
 
+import tensorflow as tf 
+
 
 @keras.utils.register_keras_serializable(package="keras_nlp")
 class TransformerEncoder(keras.layers.Layer):
