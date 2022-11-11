@@ -186,6 +186,7 @@ class TransformerEncoder(keras.layers.Layer):
         self_attention_mask = merge_padding_and_attention_mask(
             inputs, padding_mask, attention_mask
         )
+        tf.print(tf.shape(self_attention_mask))
 
         # Self attention block.
         residual = x
