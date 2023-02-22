@@ -218,6 +218,7 @@ def beam_search(
     from_logits=False,
     end_token_id=None,
     pad_token_id=0,
+    return_all_beams=False,
 ):
     """Text generation utility based on beam search algorithm.
 
@@ -245,6 +246,9 @@ def beam_search(
             replaced with `pad_token_id`.
         pad_token_id: int, defaults to 0. The pad token after `end_token_id`
             is received.
+        return_all_beams: bool, defaults to False. If True, in addition to the
+            sequence with the highest probability, all the generated beams are
+            returned.
 
     Returns:
         A 1D int Tensor, or 2D int Tensor representing the generated
@@ -397,7 +401,17 @@ def beam_search(
         prompt = _mask_tokens_after_end_token(
             prompt, max_length, end_token_id, pad_token_id
         )
-    return tf.squeeze(prompt) if input_is_1d else prompt
+        beams = _mask_tokens_after_end_token(
+            beams, max_length, end_token_id, pad_token_id
+        )
+
+    if input_is_1d:
+        prompt = tf.squeeze(prompt)
+        beams = tf.squeeze(beams)
+
+    if return_all_beams:
+        return prompt, beams
+    return prompt
 
 
 def random_search(
