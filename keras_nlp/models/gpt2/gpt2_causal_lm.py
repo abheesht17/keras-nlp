@@ -303,6 +303,7 @@ class GPT2CausalLM(Task):
             hidden_states, cache = self._build_cache(prompt)
 
             tf.print()
+            tf.print(prompt)
             tf.print(self.preprocessor.tokenizer.detokenize(prompt[0]), end="")
 
             def next(prompt, cache, index):
