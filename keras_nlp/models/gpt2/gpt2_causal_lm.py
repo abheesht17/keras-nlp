@@ -302,6 +302,9 @@ class GPT2CausalLM(Task):
             # Create and seed cache with a single forward pass.
             hidden_states, cache = self._build_cache(prompt)
 
+            tf.print()
+            tf.print(self.preprocessor.tokenizer.detokenize(prompt[0]), end="")
+
             def next(prompt, cache, index):
                 # The cache index is the index of our previous token.
                 cache_index = index - 1
@@ -381,6 +384,8 @@ class GPT2CausalLM(Task):
         # Truncate to ragged by removing tokens after the first end token.
         end_token_id = self.preprocessor.tokenizer.end_token_id
         output = truncate_at_token(output, end_token_id, input_mask)
+
+        tf.print()
 
         # Detokenize.
         output = self.preprocessor.tokenizer.detokenize(output)
