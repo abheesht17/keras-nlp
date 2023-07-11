@@ -25,8 +25,10 @@ except ImportError:
 
 def _decode_strings_to_utf8(inputs):
     """Recursively decodes to list of strings with 'utf-8' encoding."""
+    tf.print("hello")
     if isinstance(inputs, bytes):
         # Handles the case when the input is a scalar string.
+        tf.print("see this-->", inputs)
         return inputs.decode("utf-8")
     else:
         # Recursively iterate when input is a list.
