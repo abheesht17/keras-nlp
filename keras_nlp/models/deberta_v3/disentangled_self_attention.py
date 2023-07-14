@@ -287,6 +287,8 @@ class DisentangledSelfAttention(keras.layers.Layer):
             ),
         )
 
+        tf.print("c2p_attn_scores:", tf.shape(c2p_attn_scores))
+        tf.print("c2p_pos:", tf.shape(c2p_pos))
         c2p_attn_scores = tf.gather(
             c2p_attn_scores,
             indices=c2p_pos,
