@@ -264,6 +264,11 @@ class GenerativeTask(Task):
                 # Fast path for non-dataset, single-batch input.
                 inputs = [preprocess(x) for x in inputs]
 
+        print("======")
+        for gg in inputs:
+            print(gg)
+            print("xxxxxxx")
+        print("==============")
         print("--->", inputs)
         outputs = [generate(x) for x in inputs]
         print("--->", outputs)
