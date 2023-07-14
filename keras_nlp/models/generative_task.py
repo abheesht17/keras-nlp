@@ -267,6 +267,7 @@ class GenerativeTask(Task):
         print("======")
         for gg in inputs:
             print(gg)
+            print(generate(gg))
             print("xxxxxxx")
         print("==============")
         print("--->", inputs)
