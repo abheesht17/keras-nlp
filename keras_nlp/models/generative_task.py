@@ -235,7 +235,7 @@ class GenerativeTask(Task):
         # 1. Optionally preprocessing strings to dense integer tensors.
         # 2. Generate new tokens via a compiled function on dense tensors.
         # 3. Optionally postprocess dense integer tensors back to string.
-        tf.print("--->", inputs)
+        print("--->", inputs)
         generate_function = self.make_generate_function()
         end_token_id = None
         if self.preprocessor is not None:
@@ -254,7 +254,7 @@ class GenerativeTask(Task):
 
         # Normalize inputs, apply our three passes, and normalize outputs.
         inputs, input_is_scalar = self._normalize_generate_inputs(inputs)
-        tf.print("--->", inputs, input_is_scalar)
+        print("--->", inputs, input_is_scalar)
 
         if self.preprocessor is not None:
             if isinstance(inputs, tf.data.Dataset):
@@ -264,12 +264,12 @@ class GenerativeTask(Task):
                 # Fast path for non-dataset, single-batch input.
                 inputs = [preprocess(x) for x in inputs]
 
-        tf.print("--->", inputs)
+        print("--->", inputs)
         outputs = [generate(x) for x in inputs]
-        tf.print("--->", outputs)
+        print("--->", outputs)
 
         if self.preprocessor is not None:
             outputs = [postprocess(x) for x in outputs]
-        tf.print("--->", outputs)
+        print("--->", outputs)
 
         return self._normalize_generate_outputs(outputs, input_is_scalar)
