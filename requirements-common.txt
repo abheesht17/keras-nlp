@@ -1,4 +1,4 @@
-git+https://github.com/keras-team/keras-core.git@debug-generate
+keras-core==0.1.0
 # Consider handling GPU here.
 torch>=2.0.1+cpu
 jax[cpu]
