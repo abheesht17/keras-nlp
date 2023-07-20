@@ -140,3 +140,19 @@ class CachedMultiHeadAttention(keras.layers.MultiHeadAttention):
         )
         attention_output = self._output_dense(attention_output)
         return attention_output, cache
+
+    def _masked_softmax(self, attention_scores, attention_mask=None):
+        # Normalize the attention scores to probabilities.
+        # attention_scores = [B, N, T, S]
+        if attention_mask is not None:
+            # The expand dim happens starting from the `num_heads` dimension,
+            # (<batch_dims>, num_heads, <query_attention_dims,
+            # key_attention_dims>)
+            mask_expansion_axis = -len(self._attention_axes) * 2 - 1
+            for _ in range(
+                len(attention_scores.shape) - len(attention_mask.shape)
+            ):
+                attention_mask = ops.expand_dims(
+                    attention_mask, axis=mask_expansion_axis
+                )
+        return self._softmax(ops.cast(attention_scores, "float32"), mask=attention_mask)
