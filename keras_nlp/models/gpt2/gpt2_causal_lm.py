@@ -35,7 +35,7 @@ class ReverseEmbedding(keras.layers.Layer):
 
     def call(self, inputs):
         kernel = ops.transpose(ops.convert_to_tensor(self.embedding.embeddings))
-        return ops.matmul(ops.cast(inputs, "float32"), ops.cast(kernel, "float32"))
+        return ops.matmul(inputs, kernel)
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0],) + (self.embedding.embeddings.shape[0],)
