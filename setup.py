@@ -51,7 +51,7 @@ setup(
     author_email="keras-nlp@google.com",
     license="Apache License 2.0",
     install_requires=[
-        "git+https://github.com/abheesht17/keras-core.git@debug-generate",
+        "keras-core @ git+https://github.com/abheesht17/keras-core.git@debug-generate",
         "absl-py",
         "numpy",
         "packaging",
