@@ -103,17 +103,17 @@ class SAMBackbone(Backbone):
         }
         outputs.update(prompt_embeddings)
 
+        # Build the mask decoder so that it's built when we load
+        # `from_config()`.
+        self.mask_decoder.build(
+            {key: ops.shape(tensor) for key, tensor in outputs.items()}
+        )
+
         super().__init__(
             inputs=inputs,
             outputs=outputs,
             dtype=dtype,
             **kwargs,
-        )
-
-        # Build the mask decoder so that it's built when we load
-        # `from_config()`.
-        self.mask_decoder.build(
-            {key: ops.shape(tensor) for key, tensor in outputs.items()}
         )
 
     def get_config(self):
