@@ -86,6 +86,11 @@ class SAMBackbone(Backbone):
         self.image_encoder = image_encoder
         self.prompt_encoder = prompt_encoder
         self.mask_decoder = mask_decoder
+
+        # Build the mask decoder so that it's built when we load
+        # `from_config()`.
+        self.mask_decoder.build()
+
         # === Functional model
         image_input = self.image_encoder.input
 
@@ -102,12 +107,6 @@ class SAMBackbone(Backbone):
             "image_embeddings": image_embeddings,
         }
         outputs.update(prompt_embeddings)
-
-        # Build the mask decoder so that it's built when we load
-        # `from_config()`.
-        self.mask_decoder.build(
-            {key: ops.shape(tensor) for key, tensor in outputs.items()}
-        )
 
         super().__init__(
             inputs=inputs,
