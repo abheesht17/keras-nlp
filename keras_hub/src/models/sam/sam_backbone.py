@@ -1,4 +1,5 @@
 import keras
+from keras import ops
 
 from keras_hub.src.api_export import keras_hub_export
 from keras_hub.src.models.backbone import Backbone
@@ -101,11 +102,18 @@ class SAMBackbone(Backbone):
             "image_embeddings": image_embeddings,
         }
         outputs.update(prompt_embeddings)
+
         super().__init__(
             inputs=inputs,
             outputs=outputs,
             dtype=dtype,
             **kwargs,
+        )
+
+        # Build the mask decoder so that it's built when we load
+        # `from_config()`.
+        self.mask_decoder.build(
+            {key: ops.shape(tensor) for key, tensor in outputs.items()}
         )
 
     def get_config(self):
