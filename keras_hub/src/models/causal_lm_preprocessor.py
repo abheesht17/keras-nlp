@@ -1,7 +1,10 @@
 import keras
+import tensorflow as tf
 
 from keras_hub.src.api_export import keras_hub_export
-from keras_hub.src.layers.preprocessing.start_end_packer import StartEndPacker
+from keras_hub.src.layers.preprocessing.multi_segment_packer import (
+    MultiSegmentPacker,
+)
 from keras_hub.src.models.preprocessor import Preprocessor
 from keras_hub.src.utils.tensor_utils import preprocessing_function
 from keras_hub.src.utils.tensor_utils import strip_to_ragged
@@ -76,12 +79,12 @@ class CausalLMPreprocessor(Preprocessor):
     def build(self, input_shape):
         # Defer packer creation to `build()` so that we can be sure tokenizer
         # assets have loaded when restoring a saved model.
-        self.packer = StartEndPacker(
+        self.packer = MultiSegmentPacker(
             start_value=self.tokenizer.start_token_id,
             end_value=self.tokenizer.end_token_id,
             pad_value=self.tokenizer.pad_token_id,
+            sep_value=[],
             sequence_length=self.sequence_length,
-            return_padding_mask=True,
         )
         self.built = True
 
@@ -92,24 +95,78 @@ class CausalLMPreprocessor(Preprocessor):
         y=None,
         sample_weight=None,
         sequence_length=None,
+        return_labels=True,
     ):
         sequence_length = sequence_length or self.sequence_length
-        x = self.tokenizer(x)
-        # Pad with one extra token to account for the truncation below.
-        token_ids, padding_mask = self.packer(
+        padding_length = sequence_length
+        if return_labels:
+            # Pad with one extra token to account for the truncation below.
+            padding_length = sequence_length + 1
+
+        # Unpack `x`.
+        if isinstance(x, dict):
+            prompt = x["prompts"]
+            response = x.get("responses", None)
+
+        prompt_tokens = self.tokenizer(prompt)
+        if response is not None:
+            response_tokens = self.tokenizer(response)
+            x = (prompt_tokens, response_tokens)
+        else:
+            x = (prompt_tokens,)
+
+        token_ids, segment_ids = self.packer(
             x,
-            sequence_length=sequence_length + 1,
+            sequence_length=padding_length,
             add_start_value=self.add_start_token,
             add_end_value=self.add_end_token,
         )
+        response_mask = segment_ids == 1
+        padding_mask = token_ids != self.tokenizer.pad_token_id
+
         # The last token does not have a next token, so we truncate it out.
-        x = {
-            "token_ids": token_ids[..., :-1],
-            "padding_mask": padding_mask[..., :-1],
-        }
-        # Target `y` will be the next token.
-        y, sample_weight = token_ids[..., 1:], padding_mask[..., 1:]
-        return keras.utils.pack_x_y_sample_weight(x, y, sample_weight)
+        x = {}
+        if return_labels:
+            # Target `y` will be the next token.
+            x["token_ids"] = token_ids[..., :-1]
+            x["padding_mask"] = padding_mask[..., :-1]
+            y, sample_weight = token_ids[..., 1:], response_mask[..., 1:]
+            return keras.utils.pack_x_y_sample_weight(x, y, sample_weight)
+        else:
+            x["token_ids"] = token_ids
+            x["padding_mask"] = padding_mask
+            x["response_mask"] = response_mask
+            return x
+
+    @preprocessing_function
+    def dpo_preprocess(self, x):
+        prompts = x["prompts"]
+        chosen_responses = x["chosen_response"]
+        rejected_responses = x["rejected_responses"]
+
+        prompt_chosen = self(
+            {
+                "prompts": prompts,
+                "responses": chosen_responses,
+            },
+            return_labels=False,
+        )
+        prompt_rejected = self(
+            {
+                "prompts": prompts,
+                "responses": rejected_responses,
+            },
+            return_labels=False,
+        )
+
+        # Concatenate these along the batch dimension, so as to process both the
+        # chosen IDs and the rejected IDs together.
+        x = {}
+        for key in ["token_ids", "padding_mask", "response_mask"]:
+            x[key] = tf.concat(
+                (prompt_chosen[key], prompt_rejected[key]), axis=0
+            )
+        return x
 
     @preprocessing_function
     def generate_preprocess(
