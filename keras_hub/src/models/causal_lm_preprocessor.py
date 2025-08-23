@@ -95,69 +95,62 @@ class CausalLMPreprocessor(Preprocessor):
         y=None,
         sample_weight=None,
         sequence_length=None,
-        return_labels=True,
     ):
         sequence_length = sequence_length or self.sequence_length
-        padding_length = sequence_length
-        if return_labels:
-            # Pad with one extra token to account for the truncation below.
-            padding_length = sequence_length + 1
-
-        # Unpack `x`.
-        if isinstance(x, dict):
-            prompt = x["prompts"]
-            response = x.get("responses", None)
-
-        prompt_tokens = self.tokenizer(prompt)
-        if response is not None:
-            response_tokens = self.tokenizer(response)
-            x = (prompt_tokens, response_tokens)
-        else:
-            x = (prompt_tokens,)
-
-        token_ids, segment_ids = self.packer(
+        x = self.tokenizer(x)
+        # Pad with one extra token to account for the truncation below.
+        token_ids, padding_mask = self.packer(
             x,
-            sequence_length=padding_length,
+            sequence_length=sequence_length + 1,
             add_start_value=self.add_start_token,
             add_end_value=self.add_end_token,
         )
-        response_mask = segment_ids == 1
-        padding_mask = token_ids != self.tokenizer.pad_token_id
-
         # The last token does not have a next token, so we truncate it out.
-        x = {}
-        if return_labels:
-            # Target `y` will be the next token.
-            x["token_ids"] = token_ids[..., :-1]
-            x["padding_mask"] = padding_mask[..., :-1]
-            y, sample_weight = token_ids[..., 1:], response_mask[..., 1:]
-            return keras.utils.pack_x_y_sample_weight(x, y, sample_weight)
-        else:
-            x["token_ids"] = token_ids
-            x["padding_mask"] = padding_mask
-            x["response_mask"] = response_mask
-            return x
+        x = {
+            "token_ids": token_ids[..., :-1],
+            "padding_mask": padding_mask[..., :-1],
+        }
+        # Target `y` will be the next token.
+        y, sample_weight = token_ids[..., 1:], padding_mask[..., 1:]
+        return keras.utils.pack_x_y_sample_weight(x, y, sample_weight)
 
     @preprocessing_function
-    def dpo_preprocess(self, x):
+    def dpo_preprocess(
+        self,
+        x,
+        y=None,
+        sample_weight=None,
+        sequence_length=None,
+    ):
+        if not self.built:
+            self.build(None)
+
+        sequence_length = sequence_length or self.sequence_length
+
         prompts = x["prompts"]
-        chosen_responses = x["chosen_response"]
+        chosen_responses = x["chosen_responses"]
         rejected_responses = x["rejected_responses"]
 
-        prompt_chosen = self(
-            {
-                "prompts": prompts,
-                "responses": chosen_responses,
-            },
-            return_labels=False,
-        )
-        prompt_rejected = self(
-            {
-                "prompts": prompts,
-                "responses": rejected_responses,
-            },
-            return_labels=False,
-        )
+        def _process(prompts, responses):
+            prompt_tokens = self.tokenizer(prompts)
+            response_tokens = self.tokenizer(responses)
+            token_ids, segment_ids = self.packer(
+                (prompt_tokens, response_tokens),
+                sequence_length=sequence_length,
+                add_start_value=self.add_start_token,
+                add_end_value=self.add_end_token,
+            )
+            response_mask = segment_ids == 1
+            padding_mask = token_ids != self.tokenizer.pad_token_id
+
+            return {
+                "token_ids": token_ids,
+                "padding_mask": padding_mask,
+                "response_mask": response_mask,
+            }
+
+        prompt_chosen = _process(prompts, chosen_responses)
+        prompt_rejected = _process(prompts, rejected_responses)
 
         # Concatenate these along the batch dimension, so as to process both the
         # chosen IDs and the rejected IDs together.
@@ -166,7 +159,7 @@ class CausalLMPreprocessor(Preprocessor):
             x[key] = tf.concat(
                 (prompt_chosen[key], prompt_rejected[key]), axis=0
             )
-        return x
+        return keras.utils.pack_x_y_sample_weight(x, None, None)
 
     @preprocessing_function
     def generate_preprocess(

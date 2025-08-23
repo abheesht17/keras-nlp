@@ -2,7 +2,13 @@ import keras
 from keras import ops
 
 from keras_hub.src.models.preprocessor import Preprocessor
-from keras_hub.src.utils.pipeline_model import PipelineModel
+from keras_hub.src.utils.pipeline_model import _convert_inputs_to_dataset
+from keras_hub.src.utils.pipeline_model import _train_validation_split
+
+try:
+    import tensorflow as tf
+except ImportError:
+    tf = None
 
 
 def _large_negative_number(dtype):
@@ -14,10 +20,12 @@ def _large_negative_number(dtype):
 
 def _log_softmax(x, mask=None, axis=-1):
     if mask is not None:
+        mask = ops.expand_dims(mask, axis=-1)
+        negative_mask = ops.logical_not(mask)
         cast_mask = ops.multiply(
-            ops.cast(mask, x.dtype), _large_negative_number(x.dtype)
+            ops.cast(negative_mask, x.dtype), _large_negative_number(x.dtype)
         )
-        x = ops.where(mask, x, cast_mask)
+        x = ops.where(negative_mask, x, cast_mask)
 
     return ops.log_softmax(x, axis=axis)
 
@@ -47,25 +55,32 @@ def _compute_log_probs(logits, token_ids, response_mask):
     return chosen_log_probs, rejected_log_probs
 
 
-class DPOTrainer(PipelineModel):
+class DPOTrainer(keras.Model):
     def __init__(
         self,
         model,
         reference_model,
         preprocessor=None,
+        dtype=None,
+        **kwargs,
     ):
+        super().__init__(dtype=dtype, **kwargs)
+
         # Models
         self.model = model
         self.reference_model = reference_model
 
+        # Preprocessor
         self.preprocessor = (
             model.preprocessor if model.preprocessor else preprocessor
         )
 
-    def call(self, inputs):
-        token_ids, padding_mask = inputs["token_ids"], inputs["padding_mask"]
+    def build(self, input_shape):
+        self.model.build(input_shape)
+        self.reference_model.build(input_shape)
 
-        logits = self.model(token_ids, padding_mask=padding_mask)
+    def call(self, inputs):
+        logits = self.model(inputs)
         return logits
 
     def compile(
@@ -108,11 +123,55 @@ class DPOTrainer(PipelineModel):
         x = self.preprocessor.dpo_preprocess(x)
         return keras.utils.pack_x_y_sample_weight(x, y, sample_weight)
 
+    def fit(
+        self,
+        x=None,
+        y=None,
+        batch_size=None,
+        sample_weight=None,
+        validation_data=None,
+        validation_split=None,
+        **kwargs,
+    ):
+        if validation_split and validation_data is None:
+            (x, y, sample_weight), validation_data = _train_validation_split(
+                (x, y, sample_weight), validation_split=validation_split
+            )
+
+        x = _convert_inputs_to_dataset(x, y, sample_weight, batch_size)
+        x = x.map(
+            self.preprocess_samples, num_parallel_calls=tf.data.AUTOTUNE
+        ).prefetch(tf.data.AUTOTUNE)
+
+        if validation_data is not None:
+            if not isinstance(validation_data, tf.data.Dataset):
+                (vx, vy, vsw) = keras.utils.unpack_x_y_sample_weight(
+                    validation_data
+                )
+                validation_data = _convert_inputs_to_dataset(
+                    vx, vy, vsw, batch_size
+                )
+
+        return super().fit(
+            x=x,
+            y=None,
+            batch_size=None,
+            sample_weight=None,
+            validation_data=validation_data,
+            **kwargs,
+        )
+
     def predict(**kwargs):
-        pass
+        raise NotImplementedError(
+            "`predict` is not implemented for DPOTrainer. Please call "
+            "`predict` separately on `self.model`."
+        )
 
     def evaluate(**kwargs):
-        pass
+        raise NotImplementedError(
+            "`evaluate` is not implemented for DPOTrainer. Please call "
+            "`evaluate` separately on `self.model`."
+        )
 
     def _get_reference_log_probs(self, inputs):
         # Unpack the input dictionary.
@@ -123,7 +182,10 @@ class DPOTrainer(PipelineModel):
         )
 
         reference_logits = self.reference_model(
-            token_ids, padding_mask=padding_mask
+            {
+                "token_ids": token_ids,
+                "padding_mask": padding_mask,
+            }
         )
         reference_chosen_log_probs, reference_rejected_log_probs = (
             _compute_log_probs(
@@ -169,8 +231,8 @@ class DPOTrainer(PipelineModel):
         # TODO: Consider moving this to the preprocessor.
         y = ops.ones_like(margin)
 
-        loss = self.loss_fn(
-            y=y, y_pred=beta_margin, sample_weight=response_mask
+        loss = self.loss(
+            y_true=y, y_pred=beta_margin, sample_weight=response_mask
         )
 
         return loss
