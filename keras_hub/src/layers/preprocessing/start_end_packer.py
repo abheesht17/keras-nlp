@@ -152,12 +152,14 @@ class StartEndPacker(PreprocessingLayer):
         sequence_length=None,
         add_start_value=True,
         add_end_value=True,
+        padding_side=None,
     ):
         inputs, unbatched, rectangular = convert_to_ragged_batch(inputs)
         x = inputs  # Intermediate result.
 
         batch_size = tf.shape(x)[0]
         sequence_length = sequence_length or self.sequence_length
+        padding_side = padding_side or self.padding_side
         dtype = inputs.dtype
         # Truncate.
         truncation_length = sequence_length
