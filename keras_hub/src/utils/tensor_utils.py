@@ -473,3 +473,9 @@ def target_gather(
         return gather_unbatched(targets, indices, mask, mask_val)
     elif len(targets_shape) == 3:
         return _gather_batched(targets, indices, mask, mask_val)
+
+
+def compute_positions_from_mask(mask):
+    positions = ops.cumsum(mask, axis=-1)
+    positions = ops.subtract(positions, ops.greater_equal(positions, 1))
+    return positions

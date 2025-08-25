@@ -6,6 +6,11 @@ from keras_hub.src.models.preprocessor import Preprocessor
 from keras_hub.src.utils.tensor_utils import preprocessing_function
 from keras_hub.src.utils.tensor_utils import strip_to_ragged
 
+try:
+    import tensorflow as tf
+except ImportError:
+    tf = None
+
 
 @keras_hub_export("keras_hub.models.CausalLMPreprocessor")
 class CausalLMPreprocessor(Preprocessor):
@@ -64,6 +69,7 @@ class CausalLMPreprocessor(Preprocessor):
         sequence_length=1024,
         add_start_token=True,
         add_end_token=True,
+        max_prompt_length=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -72,6 +78,7 @@ class CausalLMPreprocessor(Preprocessor):
         self.sequence_length = sequence_length
         self.add_start_token = add_start_token
         self.add_end_token = add_end_token
+        self.max_prompt_length = max_prompt_length
 
     def build(self, input_shape):
         # Defer packer creation to `build()` so that we can be sure tokenizer
@@ -110,6 +117,78 @@ class CausalLMPreprocessor(Preprocessor):
         # Target `y` will be the next token.
         y, sample_weight = token_ids[..., 1:], padding_mask[..., 1:]
         return keras.utils.pack_x_y_sample_weight(x, y, sample_weight)
+
+    @preprocessing_function
+    def dpo_preprocess(
+        self,
+        x,
+        y=None,
+        sample_weight=None,
+        sequence_length=None,
+        max_prompt_length=None,
+    ):
+        if not self.built:
+            self.build(None)
+
+        sequence_length = sequence_length or self.sequence_length
+        max_prompt_length = max_prompt_length or self.max_prompt_length
+
+        # Tokenise and left-pad the prompts.
+        prompts = x["prompts"]
+        prompt_tokens = self.tokenizer(prompts)
+        prompt_tokens, _ = self.packer(
+            prompt_tokens,
+            sequence_length=sequence_length,
+            add_start_value=self.add_start_token,
+            add_end_value=False,
+            padding_side="left",
+        )
+
+        # For computations below, let's get the batch size. It is easier to get
+        # the batch size instead of the input, because the input can be a tensor
+        # or a Python list, etc.
+        batch_size = tf.shape(prompt_tokens[0])
+
+        def _process(prompt_tokens, responses):
+            response_tokens = self.tokenizer(responses)
+            token_ids, _ = self.packer(
+                (prompt_tokens, response_tokens),
+                sequence_length=sequence_length,
+                add_start_value=False,
+                add_end_value=self.add_end_token,
+            )
+            return token_ids
+
+        chosen_responses = x["chosen_responses"]
+        rejected_responses = x["rejected_responses"]
+        prompt_chosen_tokens = _process(prompt_tokens, chosen_responses)
+        prompt_rejected_tokens = _process(prompt_tokens, rejected_responses)
+
+        # `(batch_size, sequence_length)` -> `(2 * batch_size, sequence_length)`
+        # Can do a model forward pass on all both chosen and rejected samples in
+        # one go.
+        prompt_response_tokens = tf.concat(
+            (prompt_chosen_tokens, prompt_rejected_tokens), axis=0
+        )
+        # Compute padding mask and response mask.
+        padding_mask = prompt_response_tokens != self.tokenizer.pad_token_id
+        response_mask = tf.concat(
+            (
+                tf.zeros((2 * batch_size, max_prompt_length)),
+                tf.ones((2 * batch_size, sequence_length - max_prompt_length)),
+            ),
+            axis=0,
+        )
+        response_mask = tf.cast(response_mask, "bool")
+        response_mask = tf.logical_and(response_mask, padding_mask)
+
+        x = {
+            "token_ids": prompt_response_tokens,
+            "padding_mask": padding_mask,
+            "response_mask": response_mask,
+        }
+
+        return keras.utils.pack_x_y_sample_weight(x, None, None)
 
     @preprocessing_function
     def generate_preprocess(
@@ -180,6 +259,14 @@ class CausalLMPreprocessor(Preprocessor):
         self._sequence_length = value
         if self.packer is not None:
             self.packer.sequence_length = value
+
+    @property
+    def max_prompt_length(self):
+        return self._max_prompt_length
+
+    @max_prompt_length.setter
+    def max_prompt_length(self, value):
+        self._max_prompt_length = value
 
     def export_to_transformers(self, path):
         """Export the preprocessor to HuggingFace Transformers format.
