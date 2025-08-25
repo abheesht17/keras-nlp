@@ -187,7 +187,7 @@ class StartEndPacker(PreprocessingLayer):
         outputs = pad(
             x,
             pad_value=self.pad_value,
-            padding_side=self.padding_side,
+            padding_side=padding_side,
             shape=(batch_size, sequence_length),
         )
         outputs = tf.squeeze(outputs, axis=0) if unbatched else outputs
@@ -198,7 +198,7 @@ class StartEndPacker(PreprocessingLayer):
             mask = pad(
                 mask,
                 pad_value=False,
-                padding_side=self.padding_side,
+                padding_side=padding_side,
                 shape=(batch_size, sequence_length),
             )
             mask = tf.squeeze(mask, axis=0) if unbatched else mask
