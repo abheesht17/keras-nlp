@@ -138,7 +138,7 @@ class CausalLMPreprocessor(Preprocessor):
         prompt_tokens = self.tokenizer(prompts)
         prompt_tokens, _ = self.packer(
             prompt_tokens,
-            sequence_length=sequence_length,
+            sequence_length=max_prompt_length,
             add_start_value=self.add_start_token,
             add_end_value=False,
             padding_side="left",
