@@ -281,6 +281,7 @@ class MultiSegmentPacker(PreprocessingLayer):
         sequence_length=None,
         add_start_value=True,
         add_end_value=True,
+        padding_side="right",
     ):
         inputs, unbatched = self._sanitize_inputs(inputs)
 
@@ -292,17 +293,18 @@ class MultiSegmentPacker(PreprocessingLayer):
         )
         # Pad to dense tensor output.
         sequence_length = sequence_length or self.sequence_length
+        padding_side = padding_side or self.padding_side
         shape = tf.cast([-1, sequence_length], "int64")
         token_ids = pad(
             token_ids,
             shape=shape,
-            padding_side=self.padding_side,
+            padding_side=padding_side,
             pad_value=self.pad_value,
         )
         segment_ids = pad(
             segment_ids,
             shape=shape,
-            padding_side=self.padding_side,
+            padding_side=padding_side,
             pad_value=0,
         )
         # Remove the batch dim if added.

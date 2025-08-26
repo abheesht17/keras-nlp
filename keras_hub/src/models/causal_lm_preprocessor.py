@@ -1,7 +1,9 @@
 import keras
 
 from keras_hub.src.api_export import keras_hub_export
-from keras_hub.src.layers.preprocessing.start_end_packer import StartEndPacker
+from keras_hub.src.layers.preprocessing.multi_segment_packer import (
+    MultiSegmentPacker,
+)
 from keras_hub.src.models.preprocessor import Preprocessor
 from keras_hub.src.utils.tensor_utils import preprocessing_function
 from keras_hub.src.utils.tensor_utils import strip_to_ragged
@@ -83,12 +85,12 @@ class CausalLMPreprocessor(Preprocessor):
     def build(self, input_shape):
         # Defer packer creation to `build()` so that we can be sure tokenizer
         # assets have loaded when restoring a saved model.
-        self.packer = StartEndPacker(
+        self.packer = MultiSegmentPacker(
+            sequence_length=self.sequence_length,
             start_value=self.tokenizer.start_token_id,
             end_value=self.tokenizer.end_token_id,
+            sep_value=[],
             pad_value=self.tokenizer.pad_token_id,
-            sequence_length=self.sequence_length,
-            return_padding_mask=True,
         )
         self.built = True
 
@@ -103,12 +105,13 @@ class CausalLMPreprocessor(Preprocessor):
         sequence_length = sequence_length or self.sequence_length
         x = self.tokenizer(x)
         # Pad with one extra token to account for the truncation below.
-        token_ids, padding_mask = self.packer(
+        token_ids, _ = self.packer(
             x,
             sequence_length=sequence_length + 1,
             add_start_value=self.add_start_token,
             add_end_value=self.add_end_token,
         )
+        padding_mask = token_ids != self.tokenizer.pad_token_id
         # The last token does not have a next token, so we truncate it out.
         x = {
             "token_ids": token_ids[..., :-1],
@@ -132,6 +135,13 @@ class CausalLMPreprocessor(Preprocessor):
 
         sequence_length = sequence_length or self.sequence_length
         max_prompt_length = max_prompt_length or self.max_prompt_length
+        if max_prompt_length is None:
+            raise ValueError(
+                "`max_prompt_length` cannot be `None` when calling "
+                "`dpo_preprocess`. Either pass a non-`None` value to "
+                "`dpo_preprocess` or set the preprocessor attribute: "
+                "`preprocessor.max_prompt_length = ...`."
+            )
 
         # Tokenise and left-pad the prompts.
         prompts = x["prompts"]

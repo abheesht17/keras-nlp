@@ -152,7 +152,7 @@ class StartEndPacker(PreprocessingLayer):
         sequence_length=None,
         add_start_value=True,
         add_end_value=True,
-        padding_side=None,
+        padding_side="right",
     ):
         inputs, unbatched, rectangular = convert_to_ragged_batch(inputs)
         x = inputs  # Intermediate result.
