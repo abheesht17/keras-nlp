@@ -180,6 +180,8 @@ class CausalLMPreprocessor(Preprocessor):
         prompt_response_tokens = tf.concat(
             (prompt_chosen_tokens, prompt_rejected_tokens), axis=0
         )
+        return prompt_response_tokens
+
         # Compute padding mask and response mask.
         padding_mask = prompt_response_tokens != self.tokenizer.pad_token_id
         response_mask = tf.concat(
