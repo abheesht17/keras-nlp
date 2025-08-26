@@ -187,7 +187,7 @@ class CausalLMPreprocessor(Preprocessor):
                 tf.zeros((2 * batch_size, max_prompt_length)),
                 tf.ones((2 * batch_size, sequence_length - max_prompt_length)),
             ),
-            axis=0,
+            axis=1,
         )
         response_mask = tf.cast(response_mask, "bool")
         response_mask = tf.logical_and(response_mask, padding_mask)
