@@ -157,7 +157,7 @@ class CausalLMPreprocessor(Preprocessor):
         # For computations below, let's get the batch size. It is easier to get
         # the batch size instead of the input, because the input can be a tensor
         # or a Python list, etc.
-        batch_size = tf.shape(prompt_tokens[0])
+        batch_size = tf.shape(prompt_tokens)[0]
 
         def _process(prompt_tokens, responses):
             response_tokens = self.tokenizer(responses)
@@ -180,7 +180,6 @@ class CausalLMPreprocessor(Preprocessor):
         prompt_response_tokens = tf.concat(
             (prompt_chosen_tokens, prompt_rejected_tokens), axis=0
         )
-        return prompt_response_tokens
 
         # Compute padding mask and response mask.
         padding_mask = prompt_response_tokens != self.tokenizer.pad_token_id
