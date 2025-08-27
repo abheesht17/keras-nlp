@@ -84,7 +84,7 @@ class DPOTrainer(keras.Model):
         self.reference_model.build(input_shape)
 
     def call(self, inputs):
-        logits = self.model(inputs)
+        logits = self.model(self._get_inputs(inputs))
         return logits
 
     def compile(
