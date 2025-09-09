@@ -49,9 +49,10 @@ def _compute_log_probs(logits, token_ids, padding_mask, response_start_idx):
         logits, token_ids, mask=padding_mask
     )
     per_token_log_probs = ops.multiply(per_token_log_probs, padding_mask)
+    log_probs = ops.sum(per_token_log_probs, axis=-1)
 
     chosen_log_probs, rejected_log_probs = ops.split(
-        per_token_log_probs, indices_or_sections=2, axis=0
+        log_probs, indices_or_sections=2, axis=0
     )
     return chosen_log_probs, rejected_log_probs
 
