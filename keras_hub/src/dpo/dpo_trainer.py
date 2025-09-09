@@ -12,7 +12,7 @@ except ImportError:
 
 
 def _large_negative_number(dtype):
-    """Return a Large negative number based on dtype."""
+    """Return a large negative number based on dtype."""
     if keras.backend.standardize_dtype(dtype) == "float16":
         return -3e4
     return -1e9
@@ -70,6 +70,9 @@ class DPOTrainer(keras.Model):
         # Models
         self.model = model
         self.reference_model = reference_model
+
+        # Freeze the reference model.
+        self.reference_model.trainable = False
 
         # Preprocessor
         self.preprocessor = (
