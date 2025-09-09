@@ -25,7 +25,7 @@ def _log_softmax(x, mask=None, axis=-1):
         cast_mask = ops.multiply(
             ops.cast(negative_mask, x.dtype), _large_negative_number(x.dtype)
         )
-        x = ops.where(negative_mask, x, cast_mask)
+        x = ops.where(mask, x, cast_mask)
 
     return ops.log_softmax(x, axis=axis)
 
