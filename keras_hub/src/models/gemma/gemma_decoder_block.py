@@ -5,11 +5,13 @@ from keras_hub.src.layers.modeling.transformer_layer_utils import (
     compute_causal_mask,
 )
 from keras_hub.src.layers.modeling.transformer_layer_utils import (
+    compute_positions_from_mask,
+)
+from keras_hub.src.layers.modeling.transformer_layer_utils import (
     merge_padding_and_attention_mask,
 )
 from keras_hub.src.models.gemma.gemma_attention import CachedGemmaAttention
 from keras_hub.src.models.gemma.rms_normalization import RMSNormalization
-from keras_hub.src.utils.tensor_utils import compute_positions_from_mask
 
 
 class GemmaDecoderBlock(keras.layers.Layer):
@@ -182,6 +184,7 @@ class GemmaDecoderBlock(keras.layers.Layer):
             positions = None
             if padding_mask is not None:
                 positions = compute_positions_from_mask(padding_mask)
+
             attention = self.attention(
                 normalized_x,
                 attention_mask=attention_mask,
